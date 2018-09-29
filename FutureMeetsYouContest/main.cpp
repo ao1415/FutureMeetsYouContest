@@ -9,6 +9,8 @@
 #include <stack>
 #include <queue>
 
+#include <cassert>
+
 using namespace std;
 
 using Array = vector<int>;
@@ -26,11 +28,6 @@ public:
 	/// <summary>
 	/// コンストラクタ
 	/// </summary>
-	/// <param name="_time">設定時間(ナノ秒)</param>
-	Timer(const std::chrono::nanoseconds& _time) { type = Type::nanoseconds; time = _time.count(); }
-	/// <summary>
-	/// コンストラクタ
-	/// </summary>
 	/// <param name="_time">設定時間(マイクロ秒)</param>
 	Timer(const std::chrono::microseconds& _time) { type = Type::microseconds; time = _time.count(); }
 	/// <summary>
@@ -38,52 +35,6 @@ public:
 	/// </summary>
 	/// <param name="_time">設定時間(ミリ秒)</param>
 	Timer(const std::chrono::milliseconds& _time) { type = Type::milliseconds; time = _time.count(); }
-	/// <summary>
-	/// コンストラクタ
-	/// </summary>
-	/// <param name="_time">設定時間(秒)</param>
-	Timer(const std::chrono::seconds& _time) { type = Type::seconds; time = _time.count(); }
-	/// <summary>
-	/// コンストラクタ
-	/// </summary>
-	/// <param name="_time">設定時間(分)</param>
-	Timer(const std::chrono::minutes& _time) { type = Type::minutes; time = _time.count(); }
-	/// <summary>
-	/// コンストラクタ
-	/// </summary>
-	/// <param name="_time">設定時間(時)</param>
-	Timer(const std::chrono::hours& _time) { type = Type::hours; time = _time.count(); }
-
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(ナノ秒)</param>
-	void set(const std::chrono::nanoseconds& _time) { type = Type::nanoseconds; time = _time.count(); }
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(マイクロ秒)</param>
-	void set(const std::chrono::microseconds& _time) { type = Type::microseconds; time = _time.count(); }
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(ミリ秒)</param>
-	void set(const std::chrono::milliseconds& _time) { type = Type::milliseconds; time = _time.count(); }
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(秒)</param>
-	void set(const std::chrono::seconds& _time) { type = Type::seconds; time = _time.count(); }
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(分</param>
-	void set(const std::chrono::minutes& _time) { type = Type::minutes; time = _time.count(); }
-	/// <summary>
-	/// 時間を設定する
-	/// </summary>
-	/// <param name="_time">設定時間(時)</param>
-	void set(const std::chrono::hours& _time) { type = Type::hours; time = _time.count(); }
 
 	/// <summary>
 	/// タイマーを開始させる
@@ -147,16 +98,6 @@ struct XorShift {
 
 };
 
-const double inline random() {
-
-	static random_device rnd;
-	static mt19937 mt(rnd());
-
-	static uniform_real_distribution<> bet(0, 1.0);
-
-	return bet(mt);
-}
-
 int GetInteger() {
 	int n;
 	cin >> n;
@@ -184,33 +125,90 @@ void simulator(Array& a, const Answer& ans) {
 	}
 };
 
-int getScore(const Array& a, const Answer& ans) {
-
-	int score = 0;
-
-	for (int s = ans.i; s <= ans.j; s++)
-	{
-		score += abs(s - a[s]) - abs(s - a[s] - ans.v);
-	}
-
-	for (int s = ans.k; s <= ans.l; s++)
-	{
-		score += abs(s - a[s]) - abs(s - a[s] + ans.v);
-	}
-
-	return score;
-}
-
 void show(const Array& arr) {
 
 	for (const auto& a : arr)
 	{
+		assert(0 < a && a <= arr.size());
 		cerr << a << ", ";
 	}
 	cerr << endl;
 }
 
 class AI {
+private:
+
+	/// <summary>
+	/// 実行時間(ms)
+	/// </summary>
+	const int T = 4500;
+
+	const double TempStart = 10000.0;
+	const double TempEnd = 1.0;
+	const double Time = T;
+	const double TempDiff = (TempStart - TempEnd) / Time;
+
+	XorShift random;
+	int size;
+
+	bool probability(const double& base, const double& next, const long long& t) {
+
+		const double diff = base - next;
+
+		if (diff > 0) return true;
+
+		const double temp = TempStart - TempDiff * t;
+
+		const double p = exp(diff / temp) * 4294967295.0;
+
+		return p > random.rand();
+	}
+
+	int getMaxAdd(const Array& field, const int idx1, const int idx2, const int width) {
+
+		int minV = size;
+		int maxV = 0;
+
+		for (int i = idx1; i < idx1 + width; i++)
+		{
+			minV = min(minV, field[i]);
+		}
+		for (int i = idx2; i < idx2 + width; i++)
+		{
+			maxV = max(maxV, field[i]);
+		}
+
+		return min(minV - 1, size - maxV);
+	}
+
+	int getScore(const Array& a, const Answer& ans) {
+
+		int score = 0;
+
+		for (int s = ans.i; s <= ans.j; s++)
+		{
+			score += abs(s + 1 - (a[s] - ans.v));
+		}
+
+		for (int s = ans.k; s <= ans.l; s++)
+		{
+			score += abs(s + 1 - (a[s] + ans.v));
+		}
+
+		return score;
+	}
+	int getScore(const Array& a) {
+
+		int score = 0;
+
+		for (int i = 0, size = (int)a.size(); i < size; i++)
+		{
+			score += abs(i + 1 - a[i]);
+		}
+
+		return score;
+	}
+
 public:
 
 	/// <summary>
@@ -221,75 +219,75 @@ public:
 	/// <returns></returns>
 	vector<Answer> think(const Array& arr, const int K) {
 
-		const int size = (int)arr.size();
+		size = (int)arr.size();
 
 		vector<Answer> ans(K);
 
-		queue<pair<int, int>> sta;
+		Array field = arr;
 
-		sta.push({ 0,size - 1 });
-
-		auto a = arr;
-
-		for (int i = 0; i < K; i++)
+		vector<pair<int, int>> sf(size);
+		for (int i = 0; i < size; i++)
 		{
-			if (!sta.empty())
+			sf[i] = { arr[i],i };
+		}
+
+		sort(sf.begin(), sf.end());
+
+		for (int t = 0; t < 100; t++)
+		{
+			ans[t] = Answer{ sf[size - t - 1].second, sf[size - t - 1].second, sf[t].second, sf[t].second, size / 2 };
+
+			simulator(field, ans[t]);
+		}
+
+		for (int t = 100; t < K; t++)
+		{
+			Timer timer(chrono::microseconds(4900 * 1000 / K));
+
+			pair<long long int, Answer> best{ 9223372036854775807,Answer{0,0,1,1,0} };
+
+			timer.start();
+
+			const int width = (int)max(1.0, (size / 8) * (1 - (double)t / K));
+			while (!timer)
 			{
-				const auto section = sta.front();
-				sta.pop();
 
-				const int width = section.second - section.first;
-				const int sec1s = section.first;
-				const int sec1e = sec1s + width / 2;
-				const int sec2s = sec1e + 1;
-				const int sec2e = section.second;
+				const int p1 = random.rand() % (size - width - width);
+				const int p2 = p1 + width + random.rand() % (size - (p1 + width) - width);
 
-				int minValue = size;
-				for (int s = sec1s; s <= sec1e; s++)
+				//if (p1 != p2)
 				{
-					minValue = min(minValue, a[s]);
-				}
-				int maxValue = 0;
-				for (int s = sec2s; s <= sec2e; s++)
-				{
-					maxValue = max(maxValue, a[s]);
-				}
+					const int idx1 = min(p1, p2);
+					const int idx2 = max(p1, p2);
 
-				int add = min(minValue - 0, size - maxValue);
+					const int MaxAdd = getMaxAdd(field, idx1, idx2, width);
 
-				int maxV = 0;
-				int maxScore = 0;
-				for (int v = 1; v <= add; v++)
-				{
-					Answer com{ sec1s,sec1e,sec2s,sec2e,v };
-
-					const int score = getScore(a, com);
-
-					if (score > maxScore)
+					if (MaxAdd > 0)
 					{
-						maxScore = score;
-						maxV = v;
+						const int add = random.rand() % (MaxAdd + 1);
+
+						const Answer com{ idx1,idx1 + width - 1,idx2,idx2 + width - 1,add };
+
+						long long int score = getScore(field, com);
+
+						//cerr << width << ", " << add << ", " << score << endl;
+
+						if (score < best.first)
+						{
+							best.first = score;
+							best.second = com;
+						}
 					}
 				}
-
-				auto next = a;
-				const auto com = Answer{ sec1s,sec1e,sec2s,sec2e,maxV };
-				simulator(next, com);
-
-				a = next;
-				ans[i] = com;
-
-				sta.push({ sec1s,sec1e });
-				sta.push({ sec2s,sec2e });
 			}
+
+			ans[t] = best.second;
+			simulator(field, best.second);
+
 		}
 
 		return ans;
 	}
-
-private:
-
-
 
 };
 
@@ -308,7 +306,13 @@ int main() {
 	AI ai;
 
 	const auto& ans = ai.think(A, K);
-
+	/*
+	for (const auto& a : ans)
+	{
+		simulator(A, a);
+		show(A);
+	}
+	*/
 	for (const auto& a : ans)
 	{
 		cout << a.i + 1 << " " << a.j + 1 << " " << a.k + 1 << " " << a.l + 1 << " " << a.v << endl;
